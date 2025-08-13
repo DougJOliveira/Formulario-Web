@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dashboard Hunt - Tibia</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1000px; margin: 30px auto; }
+    h2, h3 { text-align: center; }
+    form { max-width: 600px; margin: 0 auto; }
+    label { display: block; margin-top: 15px; }
+    input { width: 100%; padding: 8px; margin-top: 5px; }
+    button { margin-top: 20px; padding: 10px 15px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #45a049; }
+    #mensagem { text-align: center; margin-top: 10px; color: green; font-weight: bold; }
+    canvas { margin-top: 40px; }
+  </style>
+</head>
+<body>
+  <h2>Dashboard Hunt - Tibia</h2>
+
+  <form id="huntForm">
+    <label>XP feito
+      <input type="number" name="xp" required>
+    </label>
+    
+    <label>Tempo de Hunt (em horas)
+      <input type="text" name="tempo" required>
+    </label>
+    
+    <label>Profit (em gold)
+      <input type="number" name="profit" required>
+    </label>
+    
+    <label>Local da Hunt
+      <input type="text" name="local" required>
+    </label>
+
+    <label>Preço unitário da Tibia Coin (KK)
+      <input type="number" step="0.01" name="valorUnitario" required>
+    </label>
+
+    <label>Valor de venda de 250 unidades (R$)
+      <input type="number" step="0.01" name="valorVenda250" required>
+    </label>
+    
+    <button type="submit">Enviar</button>
+  </form>
+
+  <p id="mensagem"></p>
+
+  <h3>Gráficos</h3>
+  <canvas id="xpChart" height="100"></canvas>
+  <canvas id="profitChart" height="100"></canvas>
+  <canvas id="coinsChart" height="100"></canvas>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzUnyc0_H7ya4wRZsvETTbJw6NLEYcDnnpnaqLu6m93Vr1r3SixwLyrIL9CrqxuP5968g/exec"; // Substitua pelo seu Apps Script
+    const form = document.getElementById("huntForm");
+    const mensagem = document.getElementById("mensagem");
+
+    let xpChart, profitChart, coinsChart;
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = {
+        xp: parseFloat(form.xp.value),
+        tempo: form.tempo.value,
+        profit: parseFloat(form.profit.value),
+        local: form.local.value,
+        valorUnitario: parseFloat(form.valorUnitario.value),
+        valorVenda250: parseFloat(form.valorVenda250.value)
+      };
+
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        mensagem.textContent = result.result;
+        form.reset();
+        carregarDados();
+      } catch(err) {
+        mensagem.style.color = "red";
+        mensagem.textContent = "Erro ao enviar os dados.";
+      }
+    });
+
+    async function carregarDados() {
+      try {
+        const response = await fetch(SCRIPT_URL);
+        const registros = await response.json();
+
+        const labels = registros.map(r => new Date(r.data).toLocaleString());
+        const xpData = registros.map(r => r.xp);
+        const profitData = registros.map(r => r.lucroReais);
+        const coinsData = registros.map(r => r.coinsGeradas);
+
+        if(xpChart) xpChart.destroy();
+        if(profitChart) profitChart.destroy();
+        if(coinsChart) coinsChart.destroy();
+
+        xpChart = new Chart(document.getElementById('xpChart').getContext('2d'), {
+          type: 'bar',
+          data: { labels: labels, datasets: [{ label: 'XP por Hunt', data: xpData, backgroundColor: '#4CAF50' }] },
+          options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+
+        profitChart = new Chart(document.getElementById('profitChart').getContext('2d'), {
+          type: 'line',
+          data: { labels: labels, datasets: [{ label: 'Lucro (R$)', data: profitData, borderColor: '#FF5722', fill: false }] },
+          options: { responsive: true }
+        });
+
+        coinsChart = new Chart(document.getElementById('coinsChart').getContext('2d'), {
+          type: 'bar',
+          data: { labels: labels, datasets: [{ label: 'Tibia Coins geradas', data: coinsData, backgroundColor: '#2196F3' }] },
+          options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+
+      } catch(err) {
+        console.error("Erro ao carregar dados", err);
+      }
+    }
+
+    carregarDados();
+  </script>
+</body>
+</html>
